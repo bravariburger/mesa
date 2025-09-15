@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bravari Burguer - Pedidos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .category-active {
+            background: linear-gradient(135deg, #dc2626, #f59e0b);
+            color: white;
+        }
+        .popup-overlay {
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+        }
+        .cart-item {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(20px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        .bounce-animation {
+            animation: bounce 1s;
+        }
+        .floating-cart {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 45;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .product-card {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .crossell-item {
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+        .crossell-item.selected {
+            border-color: #dc2626;
+            background: #fef2f2;
+        }
+        .sticky-categories {
+            position: sticky;
+            top: 80px;
+            z-index: 30;
+            background: rgba(249, 250, 251, 0.95);
+            backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Popup Inicial -->
+    <div id="welcomePopup" class="fixed inset-0 popup-overlay flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl p-8 mx-4 max-w-md w-full shadow-2xl transform scale-95 transition-transform">
+            <div class="text-center">
+                <div class="text-6xl mb-4">🍔</div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-2">Bem-vindo à</h2>
+                <h1 class="text-3xl font-bold bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent mb-4">Bravari Burguer</h1>
+                <p class="text-gray-600 mb-6">Faça seu pedido direto da mesa de forma rápida e prática!</p>
+                <button onclick="closeWelcomePopup()" class="w-full bg-gradient-to-r from-red-600 to-yellow-500 text-white py-3 px-6 rounded-xl font-semibold hover:shadow-lg transition-all">
+                    Começar Pedido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-red-600 to-yellow-500 text-white p-4 sticky top-0 z-40 shadow-lg">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <img src="https://raw.githubusercontent.com/bravariburger/pedir/refs/heads/main/MYSTIC.png" alt="Bravari Burguer" class="w-12 h-12 rounded-full" onerror="this.style.display='none';">
+                <div>
+                    <h1 class="text-2xl font-bold">Bravari Burguer</h1>
+                    <p class="text-red-100 text-sm">Faça seu pedido</p>
+                </div>
+            </div>
+            <button onclick="toggleCart()" class="relative bg-white/20 p-3 rounded-full hover:bg-white/30 transition-colors">
+                🛒
+                <span id="cartCount" class="absolute -top-2 -right-2 bg-yellow-400 text-red-600 text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">0</span>
+            </button>
+        </div>
+    </header>
+
+
+
+    <!-- Categorias -->
+    <div class="sticky-categories">
+        <div class="max-w-6xl mx-auto p-4">
+            <div class="bg-white rounded-xl shadow-lg p-4 mb-6">
+                <div class="flex overflow-x-auto space-x-2 pb-2">
+                    <button onclick="scrollToCategory('hamburgueres')" class="category-btn category-active px-6 py-3 rounded-full font-medium whitespace-nowrap transition-all" data-category="hamburgueres">
+                        🍔 Hambúrgueres
+                    </button>
+                    <button onclick="scrollToCategory('acompanhamentos')" class="category-btn bg-gray-100 text-gray-700 px-6 py-3 rounded-full font-medium whitespace-nowrap transition-all hover:bg-gray-200" data-category="acompanhamentos">
+                        🍟 Acompanhamentos
+                    </button>
+                    <button onclick="scrollToCategory('combos')" class="category-btn bg-gray-100 text-gray-700 px-6 py-3 rounded-full font-medium whitespace-nowrap transition-all hover:bg-gray-200" data-category="combos">
+                        🍽️ Combos
+                    </button>
+                    <button onclick="scrollToCategory('bebidas')" class="category-btn bg-gray-100 text-gray-700 px-6 py-3 rounded-full font-medium whitespace-nowrap transition-all hover:bg-gray-200" data-category="bebidas">
+                        🥤 Bebidas
+                    </button>
+                    <button onclick="scrollToCategory('sobremesas')" class="category-btn bg-gray-100 text-gray-700 px-6 py-3 rounded-full font-medium whitespace-nowrap transition-all hover:bg-gray-200" data-category="sobremesas">
+                        🍰 Sobremesas
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Produtos por Categoria -->
+    <div class="max-w-6xl mx-auto p-4 space-y-8">
+        <!-- Hambúrgueres -->
+        <div id="hamburgueres-section" class="category-section">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                🍔 <span class="ml-2">Hambúrgueres</span>
+            </h2>
+            <div id="hamburgueres-container" class="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+                <!-- Produtos serão inseridos aqui -->
+            </div>
+        </div>
+
+        <!-- Acompanhamentos -->
+        <div id="acompanhamentos-section" class="category-section">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                🍟 <span class="ml-2">Acompanhamentos</span>
+            </h2>
+            <div id="acompanhamentos-container" class="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+                <!-- Produtos serão inseridos aqui -->
+            </div>
+        </div>
+
+        <!-- Combos -->
+        <div id="combos-section" class="category-section">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                🍽️ <span class="ml-2">Combos</span>
+            </h2>
+            <div id="combos-container" class="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+                <!-- Produtos serão inseridos aqui -->
+            </div>
+        </div>
+
+        <!-- Bebidas -->
+        <div id="bebidas-section" class="category-section">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                🥤 <span class="ml-2">Bebidas</span>
+            </h2>
+            <div id="bebidas-container" class="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+                <!-- Produtos serão inseridos aqui -->
+            </div>
+        </div>
+
+        <!-- Sobremesas -->
+        <div id="sobremesas-section" class="category-section">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                🍰 <span class="ml-2">Sobremesas</span>
+            </h2>
+            <div id="sobremesas-container" class="grid grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+                <!-- Produtos serão inseridos aqui -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Carrinho Lateral -->
+    <div id="cartSidebar" class="fixed right-0 top-0 h-full w-96 bg-white shadow-2xl transform translate-x-full transition-transform z-50 overflow-y-auto">
+        <div class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-gray-800">Seu Pedido</h2>
+                <button onclick="toggleCart()" class="text-gray-500 hover:text-gray-700 text-2xl">×</button>
+            </div>
+            
+            <div id="cartItems" class="space-y-4 mb-6">
+                <!-- Itens do carrinho serão inseridos aqui -->
+            </div>
+            
+            <!-- Formulário de Dados do Cliente -->
+            <div id="customerFormCart" class="border-t pt-4 mb-4" style="display: none;">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">Seus Dados</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Nome</label>
+                        <input type="text" id="customerName" placeholder="Seu nome" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">Número da Mesa</label>
+                        <input type="number" id="tableNumber" placeholder="Ex: 5" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="border-t pt-4">
+                <div class="flex justify-between text-gray-600 mb-2">
+                    <span>Subtotal:</span>
+                    <span id="subtotal">R$ 0,00</span>
+                </div>
+                <div class="flex justify-between text-gray-600 mb-2">
+                    <span>Taxa de serviço (10%):</span>
+                    <span id="serviceCharge">R$ 0,00</span>
+                </div>
+                <div class="flex justify-between text-xl font-bold text-gray-800 mb-4">
+                    <span>Total:</span>
+                    <span id="total">R$ 0,00</span>
+                </div>
+                
+                <button onclick="sendOrder()" class="w-full bg-gradient-to-r from-red-600 to-yellow-500 text-white py-3 px-6 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50" id="sendOrderBtn">
+                    Enviar Pedido via WhatsApp
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overlay do Carrinho -->
+    <div id="cartOverlay" class="fixed inset-0 bg-black/50 z-40 opacity-0 pointer-events-none transition-opacity" onclick="toggleCart()"></div>
+
+    <!-- Botão Flutuante do Carrinho -->
+    <div id="floatingCart" class="floating-cart" style="display: none;">
+        <button onclick="toggleCart()" class="bg-gradient-to-r from-red-600 to-yellow-500 text-white px-6 py-3 rounded-full font-semibold shadow-lg flex items-center space-x-2">
+            <span>🛒</span>
+            <span>Finalizar Pedido</span>
+            <span id="floatingCartCount" class="bg-white text-red-600 px-2 py-1 rounded-full text-sm font-bold">0</span>
+        </button>
+    </div>
+
+    <!-- Popup do Produto -->
+    <div id="productPopup" class="fixed inset-0 popup-overlay flex items-center justify-center z-50" style="display: none;">
+        <div class="bg-white rounded-2xl mx-4 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div id="productPopupContent">
+                <!-- Conteúdo será inserido aqui -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dados dos produtos
+        const products = {
+            hamburgueres: [
+                { id: 1, name: "Cheddar Burguer", price: 25.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Cheddar%20Burguer.jpg?raw=true", available: true },
+                { id: 2, name: "Cheddar Bacon Burguer", price: 29.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Cheddar%20Bacon%20Burguer.jpg?raw=true", available: true },
+                { id: 3, name: "Bravari Burguer", price: 27.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Bravari%20Burguer.jpg?raw=true", available: true },
+                { id: 4, name: "Cheddar Burguer Duplo", price: 35.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Cheddar%20Burguer%20Duplo.jpg?raw=true", available: true },
+                { id: 5, name: "Cheddar Bacon Burguer Duplo", price: 39.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Cheddar%20Bacon%20Burguer%20Duplo.jpg?raw=true", available: true },
+                { id: 6, name: "Bravari Burguer Duplo", price: 37.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Bravari%20Burguer%20Duplo.jpg?raw=true", available: true },
+                { id: 7, name: "Bravari Bacon Triplo", price: 49.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Bravari%20Bacon%20Triplo.jpg?raw=true", available: true },
+                { id: 8, name: "Bravari Ring Triplo", price: 52.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Bravari%20Ring%20Triplo.jpg?raw=true", available: true },
+                { id: 9, name: "Bravari Burguer Ring", price: 32.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/bravari%20burguer%20ring%20duplo.jpg?raw=true", available: true },
+                { id: 10, name: "Vulcan Burguer", price: 34.90, description: "Mude a descrição aqui", image: "🍔", available: true },
+                { id: 11, name: "Cream Cheese Burguer", price: 31.90, description: "Mude a descrição aqui", image: "🍔", available: true },
+                { id: 12, name: "Bravari Salada", price: 28.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Bravari%20Salada.jpg?raw=true", available: true },
+                { id: 13, name: "Cheddar Burguer Triplo", price: 45.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Cheddar%20Burguer%20Triplo.jpg?raw=true", available: true }
+            ],
+            acompanhamentos: [
+                { id: 14, name: "Batata Frita P", price: 8.90, description: "Mude a descrição aqui", image: "🍟", available: true },
+                { id: 15, name: "Batata Frita M", price: 12.90, description: "Mude a descrição aqui", image: "🍟", available: true },
+                { id: 16, name: "Batata Frita G", price: 16.90, description: "Mude a descrição aqui", image: "🍟", available: true }
+            ],
+            combos: [
+                { id: 17, name: "Combo Cheddar Burguer", price: 35.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20dos%20combos%20-%20bravari%20burguer/Cheddar%20Burguer.jpg?raw=true", available: true, type: 'combo' },
+                { id: 18, name: "Combo Cheddar Bacon Burguer", price: 39.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20dos%20combos%20-%20bravari%20burguer/Cheddar%20Bacon%20Burguer.jpg?raw=true", available: true, type: 'combo' },
+                { id: 19, name: "Combo Bravari Burguer", price: 37.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20dos%20combos%20-%20bravari%20burguer/Bravari%20Burguer.jpg?raw=true", available: true, type: 'combo' },
+                { id: 20, name: "Combo Cheddar Burguer Duplo", price: 45.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20dos%20combos%20-%20bravari%20burguer/Cheddar%20Burguer%20Duplo.jpg?raw=true", available: true, type: 'combo' },
+                { id: 21, name: "Combo Cheddar Bacon Burguer Duplo", price: 49.90, description: "Mude a descrição aqui", image: "🍽️", available: true, type: 'combo' },
+                { id: 22, name: "Combo Bravari Burguer Duplo", price: 47.90, description: "Mude a descrição aqui", image: "🍽️", available: true, type: 'combo' },
+                { id: 23, name: "Combo Bravari Bacon Triplo", price: 59.90, description: "Mude a descrição aqui", image: "🍽️", available: true, type: 'combo' },
+                { id: 24, name: "Combo Bravari Ring Triplo", price: 62.90, description: "Mude a descrição aqui", image: "🍽️", available: true, type: 'combo' },
+                { id: 25, name: "Combo Bravari Burguer Ring", price: 42.90, description: "Mude a descrição aqui", image: "🍽️", available: true, type: 'combo' },
+                { id: 26, name: "Combo Vulcan Burguer", price: 44.90, description: "Mude a descrição aqui", image: "🍽️", available: true, type: 'combo' },
+                { id: 27, name: "Combo Cream Cheese Burguer", price: 41.90, description: "Mude a descrição aqui", image: "🍽️", available: true, type: 'combo' },
+                { id: 28, name: "Combo Bravari Salada", price: 38.90, description: "Mude a descrição aqui", image: "🍽️", available: true, type: 'combo' },
+                { id: 29, name: "Combo Cheddar Burguer Triplo", price: 55.90, description: "Mude a descrição aqui", image: "🍽️", available: true, type: 'combo' }
+            ],
+            bebidas: [
+                { id: 30, name: "Coca-Cola 350ml", price: 6.90, description: "Mude a descrição aqui", image: "🥤", available: true },
+                { id: 31, name: "Coca-Cola Zero 350ml", price: 6.90, description: "Mude a descrição aqui", image: "🥤", available: true },
+                { id: 32, name: "Guaraná Antártica 350ml", price: 6.90, description: "Mude a descrição aqui", image: "🥤", available: true },
+                { id: 33, name: "Guaraná Antártica 1L", price: 12.90, description: "Mude a descrição aqui", image: "🥤", available: true }
+            ],
+            sobremesas: [
+                { id: 34, name: "Brownie Chocolate", price: 12.90, description: "Mude a descrição aqui", image: "🍫", available: true },
+                { id: 35, name: "Brownie Chocolate Branco", price: 12.90, description: "Mude a descrição aqui", image: "🍫", available: true }
+            ]
+        };
+
+        let cart = [];
+        let currentPopupProduct = null;
+        let selectedCrossSells = {};
+
+        // Fechar popup inicial
+        function closeWelcomePopup() {
+            document.getElementById('welcomePopup').style.display = 'none';
+        }
+
+        // Scroll para categoria
+        function scrollToCategory(category) {
+            const section = document.getElementById(`${category}-section`);
+            if (section) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            
+            // Atualizar botões ativos
+            document.querySelectorAll('.category-btn').forEach(btn => {
+                btn.classList.remove('category-active');
+                btn.classList.add('bg-gray-100', 'text-gray-700');
+            });
+            
+            const activeBtn = document.querySelector(`[data-category="${category}"]`);
+            if (activeBtn) {
+                activeBtn.classList.add('category-active');
+                activeBtn.classList.remove('bg-gray-100', 'text-gray-700');
+            }
+        }
+
+        // Exibir todos os produtos
+        function displayAllProducts() {
+            Object.keys(products).forEach(category => {
+                displayProductsInCategory(category);
+            });
+        }
+
+        // Exibir produtos de uma categoria
+        function displayProductsInCategory(category) {
+            const container = document.getElementById(`${category}-container`);
+            const categoryProducts = products[category];
+            
+            container.innerHTML = categoryProducts.map(product => `
+                <div class="product-card bg-white rounded-xl shadow-lg overflow-hidden ${!product.available ? 'opacity-50' : ''}" onclick="openProductPopup(${product.id})">
+                    <div class="h-32 lg:h-48 overflow-hidden">
+                        ${product.image.startsWith('http') ? 
+                            `<img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover" onerror="this.src=''; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div class="w-full h-full bg-gray-100 flex items-center justify-center text-4xl" style="display: none;">🍔</div>` :
+                            `<div class="w-full h-full bg-gray-100 flex items-center justify-center text-4xl lg:text-6xl">${product.image}</div>`
+                        }
+                        ${!product.available ? '<div class="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-bold">INDISPONÍVEL</div>' : ''}
+                    </div>
+                    <div class="p-3 lg:p-6">
+                        <h3 class="text-sm lg:text-lg font-bold text-gray-800 mb-2">${product.name}</h3>
+                        <div class="flex justify-between items-center">
+                            <span class="text-lg lg:text-xl font-bold text-red-600">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
+                            ${product.available ? 
+                                `<button onclick="event.stopPropagation(); ${product.type === 'combo' ? 'openProductPopup' : 'addToCart'}(${product.id})" class="bg-gradient-to-r from-red-600 to-yellow-500 text-white px-2 py-1 lg:px-4 lg:py-2 rounded-lg font-medium hover:shadow-lg transition-all text-xs lg:text-sm">
+                                    ${product.type === 'combo' ? 'Ver' : 'Adicionar'}
+                                </button>` :
+                                '<span class="text-gray-400 text-xs">Indisponível</span>'
+                            }
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Abrir popup do produto
+        function openProductPopup(productId) {
+            const product = Object.values(products).flat().find(p => p.id === productId);
+            if (!product || !product.available) return;
+            
+            currentPopupProduct = product;
+            selectedCrossSells = {};
+            
+            const popup = document.getElementById('productPopup');
+            const content = document.getElementById('productPopupContent');
+            
+            let popupHTML = `
+                <div class="relative">
+                    <button onclick="closeProductPopup()" class="absolute top-4 right-4 z-10 bg-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg text-gray-600 hover:text-gray-800">×</button>
+                    
+                    <div class="h-64 overflow-hidden">
+                        ${product.image.startsWith('http') ? 
+                            `<img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover" onerror="this.src=''; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                             <div class="w-full h-full bg-gray-100 flex items-center justify-center text-6xl" style="display: none;">🍔</div>` :
+                            `<div class="w-full h-full bg-gray-100 flex items-center justify-center text-6xl">${product.image}</div>`
+                        }
+                    </div>
+                    
+                    <div class="p-6">
+                        <h2 class="text-2xl font-bold text-gray-800 mb-2">${product.name}</h2>
+                        <div class="text-2xl font-bold text-red-600 mb-4">R$ ${product.price.toFixed(2).replace('.', ',')}</div>
+                        <p class="text-gray-600 mb-6">${product.description}</p>
+            `;
+            
+            // Se for combo, adicionar seleção de bebida e batata
+            if (product.type === 'combo') {
+                popupHTML += `
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="font-bold text-gray-800 mb-3">Escolha sua bebida:</h3>
+                            <div class="grid grid-cols-2 gap-2">
+                                ${products.bebidas.filter(b => b.available).map(bebida => `
+                                    <div class="crossell-item p-3 rounded-lg border cursor-pointer" onclick="selectComboItem('bebida', ${bebida.id})">
+                                        <div class="text-center">
+                                            <div class="text-2xl mb-1">${bebida.image}</div>
+                                            <div class="text-sm font-medium">${bebida.name}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3 class="font-bold text-gray-800 mb-3">Escolha sua batata:</h3>
+                            <div class="space-y-2">
+                                <div class="crossell-item p-3 rounded-lg border cursor-pointer" onclick="selectComboItem('batata', 14)">
+                                    <div class="flex justify-between items-center">
+                                        <span>🍟 Batata P (inclusa)</span>
+                                        <span class="text-green-600 font-medium">Grátis</span>
+                                    </div>
+                                </div>
+                                <div class="crossell-item p-3 rounded-lg border cursor-pointer" onclick="selectComboItem('batata', 15)">
+                                    <div class="flex justify-between items-center">
+                                        <span>🍟 Batata M</span>
+                                        <span class="text-red-600 font-medium">+R$ 5,00</span>
+                                    </div>
+                                </div>
+                                <div class="crossell-item p-3 rounded-lg border cursor-pointer" onclick="selectComboItem('batata', 16)">
+                                    <div class="flex justify-between items-center">
+                                        <span>🍟 Batata G</span>
+                                        <span class="text-red-600 font-medium">+R$ 8,00</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3 class="font-bold text-gray-800 mb-3">Adicionar sobremesa? (opcional)</h3>
+                            <div class="grid grid-cols-2 gap-2">
+                                ${products.sobremesas.filter(s => s.available).map(sobremesa => `
+                                    <div class="crossell-item p-3 rounded-lg border cursor-pointer" onclick="toggleCrossSell('sobremesa', ${sobremesa.id})">
+                                        <div class="text-center">
+                                            <div class="text-2xl mb-1">${sobremesa.image}</div>
+                                            <div class="text-sm font-medium">${sobremesa.name}</div>
+                                            <div class="text-sm text-red-600">+R$ ${sobremesa.price.toFixed(2).replace('.', ',')}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Cross-sell para hambúrgueres
+                popupHTML += `
+                    <div class="space-y-6">
+                        <div>
+                            <h3 class="font-bold text-gray-800 mb-3">Adicionar bebida? (opcional)</h3>
+                            <div class="grid grid-cols-2 gap-2">
+                                ${products.bebidas.filter(b => b.available).map(bebida => `
+                                    <div class="crossell-item p-3 rounded-lg border cursor-pointer" onclick="toggleCrossSell('bebida', ${bebida.id})">
+                                        <div class="text-center">
+                                            <div class="text-2xl mb-1">${bebida.image}</div>
+                                            <div class="text-sm font-medium">${bebida.name}</div>
+                                            <div class="text-sm text-red-600">+R$ ${bebida.price.toFixed(2).replace('.', ',')}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3 class="font-bold text-gray-800 mb-3">Adicionar batata? (opcional)</h3>
+                            <div class="grid grid-cols-3 gap-2">
+                                ${products.acompanhamentos.filter(a => a.available).map(acomp => `
+                                    <div class="crossell-item p-3 rounded-lg border cursor-pointer" onclick="toggleCrossSell('batata', ${acomp.id})">
+                                        <div class="text-center">
+                                            <div class="text-2xl mb-1">${acomp.image}</div>
+                                            <div class="text-xs font-medium">${acomp.name}</div>
+                                            <div class="text-xs text-red-600">+R$ ${acomp.price.toFixed(2).replace('.', ',')}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <h3 class="font-bold text-gray-800 mb-3">Adicionar sobremesa? (opcional)</h3>
+                            <div class="grid grid-cols-2 gap-2">
+                                ${products.sobremesas.filter(s => s.available).map(sobremesa => `
+                                    <div class="crossell-item p-3 rounded-lg border cursor-pointer" onclick="toggleCrossSell('sobremesa', ${sobremesa.id})">
+                                        <div class="text-center">
+                                            <div class="text-2xl mb-1">${sobremesa.image}</div>
+                                            <div class="text-sm font-medium">${sobremesa.name}</div>
+                                            <div class="text-sm text-red-600">+R$ ${sobremesa.price.toFixed(2).replace('.', ',')}</div>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            popupHTML += `
+                        <div class="mt-8">
+                            <button onclick="addProductWithCrossSells()" class="w-full bg-gradient-to-r from-red-600 to-yellow-500 text-white py-4 px-6 rounded-xl font-semibold hover:shadow-lg transition-all">
+                                Adicionar ao Pedido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            content.innerHTML = popupHTML;
+            popup.style.display = 'flex';
+        }
+
+        // Fechar popup do produto
+        function closeProductPopup() {
+            document.getElementById('productPopup').style.display = 'none';
+            currentPopupProduct = null;
+            selectedCrossSells = {};
+        }
+
+        // Selecionar item do combo (obrigatório)
+        function selectComboItem(type, productId) {
+            // Remover seleção anterior
+            document.querySelectorAll(`.crossell-item`).forEach(item => {
+                if (item.onclick.toString().includes(`selectComboItem('${type}'`)) {
+                    item.classList.remove('selected');
+                }
+            });
+            
+            // Adicionar nova seleção
+            event.currentTarget.classList.add('selected');
+            selectedCrossSells[type] = productId;
+        }
+
+        // Toggle cross-sell (opcional)
+        function toggleCrossSell(type, productId) {
+            const element = event.currentTarget;
+            
+            if (selectedCrossSells[type] === productId) {
+                element.classList.remove('selected');
+                delete selectedCrossSells[type];
+            } else {
+                // Remover seleção anterior do mesmo tipo
+                document.querySelectorAll(`.crossell-item`).forEach(item => {
+                    if (item.onclick.toString().includes(`toggleCrossSell('${type}'`)) {
+                        item.classList.remove('selected');
+                    }
+                });
+                
+                element.classList.add('selected');
+                selectedCrossSells[type] = productId;
+            }
+        }
+
+        // Adicionar produto com cross-sells
+        function addProductWithCrossSells() {
+            if (!currentPopupProduct) return;
+            
+            // Verificar se combo tem bebida e batata selecionadas
+            if (currentPopupProduct.type === 'combo') {
+                if (!selectedCrossSells.bebida || !selectedCrossSells.batata) {
+                    alert('Por favor, selecione uma bebida e uma batata para o combo.');
+                    return;
+                }
+            }
+            
+            // Adicionar produto principal
+            addToCart(currentPopupProduct.id, selectedCrossSells);
+            
+            closeProductPopup();
+        }
+
+        // Adicionar ao carrinho
+        function addToCart(productId, crossSells = {}) {
+            const product = Object.values(products).flat().find(p => p.id === productId);
+            if (!product) return;
+            
+            let cartItem = { ...product, quantity: 1, crossSells: {}, totalPrice: product.price };
+            
+            // Processar cross-sells
+            if (Object.keys(crossSells).length > 0) {
+                Object.entries(crossSells).forEach(([type, itemId]) => {
+                    const crossSellProduct = Object.values(products).flat().find(p => p.id === itemId);
+                    if (crossSellProduct) {
+                        cartItem.crossSells[type] = crossSellProduct;
+                        
+                        // Calcular preço adicional para combos
+                        if (product.type === 'combo' && type === 'batata') {
+                            if (itemId === 15) cartItem.totalPrice += 5; // Batata M
+                            if (itemId === 16) cartItem.totalPrice += 8; // Batata G
+                        } else if (product.type !== 'combo') {
+                            cartItem.totalPrice += crossSellProduct.price;
+                        }
+                    }
+                });
+            }
+            
+            // Verificar se já existe item similar no carrinho
+            const existingItemIndex = cart.findIndex(item => 
+                item.id === productId && 
+                JSON.stringify(item.crossSells) === JSON.stringify(cartItem.crossSells)
+            );
+            
+            if (existingItemIndex !== -1) {
+                cart[existingItemIndex].quantity += 1;
+            } else {
+                cart.push(cartItem);
+            }
+            
+            // Animação de sucesso
+            const button = event?.target;
+            if (button) {
+                button.classList.add('bounce-animation');
+                setTimeout(() => button.classList.remove('bounce-animation'), 1000);
+            }
+            
+            updateCart();
+        }
+
+        // Remover do carrinho
+        function removeFromCart(index) {
+            cart.splice(index, 1);
+            updateCart();
+        }
+
+        // Atualizar quantidade
+        function updateQuantity(index, change) {
+            if (cart[index]) {
+                cart[index].quantity += change;
+                if (cart[index].quantity <= 0) {
+                    removeFromCart(index);
+                } else {
+                    updateCart();
+                }
+            }
+        }
+
+        // Atualizar carrinho
+        function updateCart() {
+            const cartItems = document.getElementById('cartItems');
+            const cartCount = document.getElementById('cartCount');
+            const floatingCartCount = document.getElementById('floatingCartCount');
+            const floatingCart = document.getElementById('floatingCart');
+            const customerForm = document.getElementById('customerFormCart');
+            const subtotalEl = document.getElementById('subtotal');
+            const serviceChargeEl = document.getElementById('serviceCharge');
+            const totalEl = document.getElementById('total');
+            
+            // Contar itens
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            cartCount.textContent = totalItems;
+            floatingCartCount.textContent = totalItems;
+            
+            // Mostrar/esconder botão flutuante e formulário
+            if (totalItems > 0) {
+                floatingCart.style.display = 'block';
+                customerForm.style.display = 'block';
+            } else {
+                floatingCart.style.display = 'none';
+                customerForm.style.display = 'none';
+            }
+            
+            // Exibir itens
+            if (cart.length === 0) {
+                cartItems.innerHTML = '<p class="text-gray-500 text-center py-8">Seu carrinho está vazio</p>';
+            } else {
+                cartItems.innerHTML = cart.map((item, index) => {
+                    let itemDescription = item.name;
+                    let crossSellText = '';
+                    
+                    if (Object.keys(item.crossSells).length > 0) {
+                        const crossSellNames = Object.values(item.crossSells).map(cs => cs.name);
+                        crossSellText = `<div class="text-xs text-gray-500 mt-1">+ ${crossSellNames.join(', ')}</div>`;
+                    }
+                    
+                    return `
+                        <div class="cart-item bg-gray-50 rounded-lg p-4">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <h4 class="font-medium text-gray-800">${itemDescription}</h4>
+                                    ${crossSellText}
+                                </div>
+                                <button onclick="removeFromCart(${index})" class="text-red-500 hover:text-red-700 ml-2">×</button>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <div class="flex items-center space-x-2">
+                                    <button onclick="updateQuantity(${index}, -1)" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300">-</button>
+                                    <span class="font-medium">${item.quantity}</span>
+                                    <button onclick="updateQuantity(${index}, 1)" class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center hover:bg-gray-300">+</button>
+                                </div>
+                                <span class="font-bold text-red-600">R$ ${(item.totalPrice * item.quantity).toFixed(2).replace('.', ',')}</span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            // Calcular totais
+            const subtotal = cart.reduce((sum, item) => sum + (item.totalPrice * item.quantity), 0);
+            const serviceCharge = subtotal * 0.10;
+            const total = subtotal + serviceCharge;
+            
+            subtotalEl.textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
+            serviceChargeEl.textContent = `R$ ${serviceCharge.toFixed(2).replace('.', ',')}`;
+            totalEl.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+        }
+
+        // Toggle carrinho
+        function toggleCart() {
+            const sidebar = document.getElementById('cartSidebar');
+            const overlay = document.getElementById('cartOverlay');
+            
+            if (sidebar.classList.contains('translate-x-full')) {
+                sidebar.classList.remove('translate-x-full');
+                overlay.classList.remove('opacity-0', 'pointer-events-none');
+            } else {
+                sidebar.classList.add('translate-x-full');
+                overlay.classList.add('opacity-0', 'pointer-events-none');
+            }
+        }
+
+        // Enviar pedido
+        function sendOrder() {
+            const name = document.getElementById('customerName').value.trim();
+            const table = document.getElementById('tableNumber').value.trim();
+            
+            if (!name || !table) {
+                alert('Por favor, preencha seu nome e número da mesa.');
+                return;
+            }
+            
+            if (cart.length === 0) {
+                alert('Adicione itens ao seu pedido.');
+                return;
+            }
+            
+            // Calcular totais
+            const subtotal = cart.reduce((sum, item) => sum + (item.totalPrice * item.quantity), 0);
+            const serviceCharge = subtotal * 0.10;
+            const total = subtotal + serviceCharge;
+            
+            // Horário do pedido
+            const now = new Date();
+            const orderTime = now.toLocaleString('pt-BR', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            // Montar mensagem
+            let message = `*CONSUMIR NO LOCAL*\n\n`;
+            message += `👤 *Cliente:* ${name}\n`;
+            message += `🪑 *Mesa:* ${table}\n`;
+            message += `🕐 *Horário:* ${orderTime}\n\n`;
+            message += `📋 *PEDIDO:*\n`;
+            
+            cart.forEach(item => {
+                message += `• ${item.quantity}x ${item.name}`;
+                
+                // Adicionar cross-sells
+                if (Object.keys(item.crossSells).length > 0) {
+                    const crossSellNames = Object.values(item.crossSells).map(cs => cs.name);
+                    message += ` (+ ${crossSellNames.join(', ')})`;
+                }
+                
+                message += ` - R$ ${(item.totalPrice * item.quantity).toFixed(2).replace('.', ',')}\n`;
+            });
+            
+            message += `\n💰 *VALORES:*\n`;
+            message += `Subtotal: R$ ${subtotal.toFixed(2).replace('.', ',')}\n`;
+            message += `Taxa de serviço (10%): R$ ${serviceCharge.toFixed(2).replace('.', ',')}\n`;
+            message += `*Total: R$ ${total.toFixed(2).replace('.', ',')}*`;
+            
+            // Enviar para WhatsApp
+            const whatsappUrl = `https://wa.me/5521959549941?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+        }
+
+        // Detectar scroll para atualizar categoria ativa
+        function handleScroll() {
+            const sections = document.querySelectorAll('.category-section');
+            const categoryButtons = document.querySelectorAll('.category-btn');
+            
+            let currentSection = '';
+            
+            sections.forEach(section => {
+                const rect = section.getBoundingClientRect();
+                if (rect.top <= 200 && rect.bottom >= 200) {
+                    currentSection = section.id.replace('-section', '');
+                }
+            });
+            
+            if (currentSection) {
+                categoryButtons.forEach(btn => {
+                    btn.classList.remove('category-active');
+                    btn.classList.add('bg-gray-100', 'text-gray-700');
+                });
+                
+                const activeBtn = document.querySelector(`[data-category="${currentSection}"]`);
+                if (activeBtn) {
+                    activeBtn.classList.add('category-active');
+                    activeBtn.classList.remove('bg-gray-100', 'text-gray-700');
+                }
+            }
+        }
+
+        // Inicializar
+        document.addEventListener('DOMContentLoaded', function() {
+            displayAllProducts();
+            window.addEventListener('scroll', handleScroll);
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97e2239552c264df',t:'MTc1NzcwODc3OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
