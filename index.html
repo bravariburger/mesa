@@ -384,9 +384,9 @@
                 { id: 36, name: "Coca-Cola 350ml", code: "CC", price: 6.90, description: "Mude a descrição aqui", image: "🥤" },
                 { id: 37, name: "Coca-Cola Zero 350ml", code: "CCZ", price: 6.90, description: "Mude a descrição aqui", image: "🥤" },
                 { id: 38, name: "Guaraná Antártica 350ml", code: "GUAA", price: 6.90, description: "Mude a descrição aqui", image: "🥤" },
-                { id: 39, name: "Guaraná Antártica 1L", code: "GUAA1L", price: 12.90, description: "Mude a descrição aqui", image: "🥤" },
-                { id: 40, name: "Coca-Cola 2L", code: "CC2L", price: 0.00, description: "Mude a descrição aqui", image: "🥤" },
-                { id: 41, name: "Coca-Cola Zero 2L", code: "CCZ2L", price: 0.00, description: "Mude a descrição aqui", image: "🥤" }
+                { id: 39, name: "Guaraná Antártica 1L", code: "GUAA1L", price: 9.00, description: "Mude a descrição aqui", image: "🥤" },
+                { id: 40, name: "Coca-Cola 2L", code: "CC2L", price: 12.00, description: "Mude a descrição aqui", image: "🥤" },
+                { id: 41, name: "Coca-Cola Zero 2L", code: "CCZ2L", price: 12.00, description: "Mude a descrição aqui", image: "🥤" }
             ],
             sobremesas: [
                 { id: 42, name: "Brownie Chocolate", code: "BW1", price: 12.90, description: "Mude a descrição aqui", image: "https://raw.githubusercontent.com/bravariburger/pedir/refs/heads/main/Sobremesas/brownie.jpg" },
@@ -837,7 +837,7 @@
             
             // Calcular totais
             const subtotal = cart.reduce((sum, item) => sum + (item.totalPrice * item.quantity), 0);
-            const serviceCharge = subtotal * 0.10;
+            const serviceCharge = cart.length > 0 ? 0.30 : 0;
             const total = subtotal + serviceCharge;
             
             subtotalEl.textContent = `R$ ${subtotal.toFixed(2).replace('.', ',')}`;
@@ -877,7 +877,7 @@
             
             // Calcular totais
             const subtotal = cart.reduce((sum, item) => sum + (item.totalPrice * item.quantity), 0);
-            const serviceCharge = subtotal * 0.10;
+            const serviceCharge = cart.length > 0 ? 0.30 : 0;
             const total = subtotal + serviceCharge;
             
             // Horário do pedido
@@ -956,5 +956,5 @@
             window.addEventListener('scroll', handleScroll);
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9802b547300364f9',t:'MTc1ODA1MDI5MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9802f41c90b5cb03',t:'MTc1ODA1Mjg2My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
