@@ -6,6 +6,9 @@
     <title>Bravari Burguer - Pedidos</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        body {
+            overflow: hidden; /* Inicialmente travado pelo popup de boas-vindas */
+        }
         .category-active {
             background: linear-gradient(135deg, #dc2626, #f59e0b);
             color: white;
@@ -49,9 +52,11 @@
             z-index: 60;
             transform: translateX(100%);
             transition: transform 0.3s ease-out;
+            opacity: 0;
         }
         .cart-notification.show {
             transform: translateX(0);
+            opacity: 1;
         }
         .floating-cart {
             position: fixed;
@@ -65,6 +70,21 @@
             50% { transform: scale(1.05); }
             100% { transform: scale(1); }
         }
+        .popup-content {
+            max-height: 90vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .popup-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            overflow: hidden;
+        }
         .product-card {
             cursor: pointer;
             transition: all 0.3s ease;
@@ -74,12 +94,37 @@
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
         }
         .crossell-item {
-            border: 2px solid transparent;
+            border: 2px solid #e5e7eb;
             transition: all 0.3s ease;
+            background: #f9fafb;
+        }
+        .crossell-item:hover {
+            border-color: #dc2626;
+            background: #fef2f2;
         }
         .crossell-item.selected {
             border-color: #dc2626;
             background: #fef2f2;
+            box-shadow: 0 0 0 1px #dc2626;
+        }
+        .crossell-section {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .crossell-title {
+            color: #374151;
+            font-weight: 700;
+            font-size: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+        .crossell-required {
+            color: #dc2626;
+            font-size: 12px;
+            margin-left: 8px;
         }
         .sticky-categories {
             position: sticky;
@@ -249,7 +294,7 @@
                 </div>
                 
                 <button onclick="sendOrder()" class="w-full bg-gradient-to-r from-red-600 to-yellow-500 text-white py-3 px-6 rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50" id="sendOrderBtn">
-                    Enviar Pedido via WhatsApp
+                    Enviar Pedido para Cozinha
                 </button>
             </div>
         </div>
@@ -268,13 +313,13 @@
     </div>
 
     <!-- Notificação de Sucesso -->
-    <div id="cartNotification" class="cart-notification">
+    <div id="cartNotification" class="cart-notification" style="display: none;">
         ✅ Adicionado ao carrinho!
     </div>
 
     <!-- Popup do Produto -->
     <div id="productPopup" class="fixed inset-0 popup-overlay flex items-center justify-center z-50" style="display: none;">
-        <div class="bg-white rounded-2xl mx-4 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-2xl mx-4 max-w-md w-full shadow-2xl popup-content">
             <div id="productPopupContent">
                 <!-- Conteúdo será inserido aqui -->
             </div>
@@ -285,59 +330,67 @@
         // ===== CONTROLE DE ESTOQUE =====
         // Para alterar disponibilidade: 1 = disponível, 0 = indisponível
         const stockControl = {
-            1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 12: 1, 13: 1, // Hambúrgueres
-            14: 1, 15: 1, 16: 1, // Acompanhamentos
-            17: 1, 18: 1, 19: 1, 20: 1, 21: 1, 22: 1, 23: 1, 24: 1, 25: 1, 26: 1, 27: 1, 28: 1, 29: 1, // Combos
-            30: 1, 31: 1, 32: 1, 33: 1, // Bebidas
-            34: 1, 35: 1 // Sobremesas
+            1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 12: 1, 13: 1, 14: 1, 15: 1, 16: 1, // Hambúrgueres
+            17: 1, 18: 1, 19: 1, // Acompanhamentos
+            20: 1, 21: 1, 22: 1, 23: 1, 24: 1, 25: 1, 26: 1, 27: 1, 28: 1, 29: 1, 30: 1, 31: 1, 32: 1, 33: 1, 34: 1, 35: 1, // Combos
+            36: 1, 37: 1, 38: 1, 39: 1, 40: 1, 41: 1, // Bebidas
+            42: 1, 43: 1 // Sobremesas
         };
 
         // Dados dos produtos
         const products = {
             hamburgueres: [
-                { id: 1, name: "Cheddar Burguer", price: 25.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Cheddar%20Burguer.jpg?raw=true" },
-                { id: 2, name: "Cheddar Bacon Burguer", price: 29.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Cheddar%20Bacon%20Burguer.jpg?raw=true" },
-                { id: 3, name: "Bravari Burguer", price: 27.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Bravari%20Burguer.jpg?raw=true" },
-                { id: 4, name: "Cheddar Burguer Duplo", price: 35.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Cheddar%20Burguer%20Duplo.jpg?raw=true" },
-                { id: 5, name: "Cheddar Bacon Burguer Duplo", price: 39.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Cheddar%20Bacon%20Burguer%20Duplo.jpg?raw=true" },
-                { id: 6, name: "Bravari Burguer Duplo", price: 37.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Bravari%20Burguer%20Duplo.jpg?raw=true" },
-                { id: 7, name: "Bravari Bacon Triplo", price: 49.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Bravari%20Bacon%20Triplo.jpg?raw=true" },
-                { id: 8, name: "Bravari Ring Triplo", price: 52.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Bravari%20Ring%20Triplo.jpg?raw=true" },
-                { id: 9, name: "Bravari Burguer Ring", price: 32.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/bravari%20burguer%20ring%20duplo.jpg?raw=true" },
-                { id: 10, name: "Vulcan Burguer", price: 34.90, description: "Mude a descrição aqui", image: "🍔" },
-                { id: 11, name: "Cream Cheese Burguer", price: 31.90, description: "Mude a descrição aqui", image: "🍔" },
-                { id: 12, name: "Bravari Salada", price: 28.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Bravari%20Salada.jpg?raw=true" },
-                { id: 13, name: "Cheddar Burguer Triplo", price: 45.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Cheddar%20Burguer%20Triplo.jpg?raw=true" }
+                { id: 1, name: "Cheddar Burguer", code: "1", price: 25.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Cheddar%20Burguer.jpg?raw=true" },
+                { id: 2, name: "Cheddar Bacon Burguer", code: "2", price: 29.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Cheddar%20Bacon%20Burguer.jpg?raw=true" },
+                { id: 3, name: "Bravari Burguer", code: "3", price: 27.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Bravari%20Burguer.jpg?raw=true" },
+                { id: 4, name: "Bravari Burguer Ring", code: "4", price: 32.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/bravari%20burguer%20ring%20duplo.jpg?raw=true" },
+                { id: 5, name: "Cheddar Burguer Duplo", code: "5", price: 35.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Cheddar%20Burguer%20Duplo.jpg?raw=true" },
+                { id: 6, name: "Cheddar Bacon Burguer Duplo", code: "6", price: 39.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Cheddar%20Bacon%20Burguer%20Duplo.jpg?raw=true" },
+                { id: 7, name: "Bravari Burguer Duplo", code: "7", price: 37.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Bravari%20Burguer%20Duplo.jpg?raw=true" },
+                { id: 8, name: "Bravari Burguer Ring Duplo", code: "8", price: 0.00, description: "Mude a descrição aqui", image: "🍔" },
+                { id: 9, name: "Cheddar Burguer Triplo", code: "9", price: 45.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Cheddar%20Burguer%20Triplo.jpg?raw=true" },
+                { id: 10, name: "Bravari Bacon Triplo", code: "10", price: 49.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Bravari%20Bacon%20Triplo.jpg?raw=true" },
+                { id: 11, name: "Bravari Burguer Triplo", code: "11", price: 0.00, description: "Mude a descrição aqui", image: "🍔" },
+                { id: 12, name: "Bravari Ring Triplo", code: "12", price: 52.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Bravari%20Ring%20Triplo.jpg?raw=true" },
+                { id: 13, name: "Cream Cheese Burguer", code: "13", price: 31.90, description: "Mude a descrição aqui", image: "🍔" },
+                { id: 14, name: "Bravari Salada", code: "14", price: 28.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20burguers%20-%20bravari%20burguer/Bravari%20Salada.jpg?raw=true" },
+                { id: 15, name: "Vulcan Burguer", code: "15", price: 34.90, description: "Mude a descrição aqui", image: "🍔" },
+                { id: 16, name: "Bravari Ring Triplo", code: "16", price: 0.00, description: "Mude a descrição aqui", image: "🍔" }
             ],
             acompanhamentos: [
-                { id: 14, name: "Batata Frita P", price: 8.90, description: "Mude a descrição aqui", image: "https://raw.githubusercontent.com/bravariburger/pedir/refs/heads/main/Batatas/batata%20frita.jpg" },
-                { id: 15, name: "Batata Frita M", price: 12.90, description: "Mude a descrição aqui", image: "https://raw.githubusercontent.com/bravariburger/pedir/refs/heads/main/Batatas/batata%20frita.jpg" },
-                { id: 16, name: "Batata Frita G", price: 16.90, description: "Mude a descrição aqui", image: "https://raw.githubusercontent.com/bravariburger/pedir/refs/heads/main/Batatas/batata%20frita.jpg" }
+                { id: 17, name: "Batata Frita P", code: "BTTP", price: 8.90, description: "Mude a descrição aqui", image: "https://raw.githubusercontent.com/bravariburger/pedir/refs/heads/main/Batatas/batata%20frita.jpg" },
+                { id: 18, name: "Batata Frita M", code: "BTTM", price: 12.90, description: "Mude a descrição aqui", image: "https://raw.githubusercontent.com/bravariburger/pedir/refs/heads/main/Batatas/batata%20frita.jpg" },
+                { id: 19, name: "Batata Frita G", code: "BTTG", price: 16.90, description: "Mude a descrição aqui", image: "https://raw.githubusercontent.com/bravariburger/pedir/refs/heads/main/Batatas/batata%20frita.jpg" }
             ],
             combos: [
-                { id: 17, name: "Combo Cheddar Burguer", price: 35.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20dos%20combos%20-%20bravari%20burguer/Cheddar%20Burguer.jpg?raw=true", type: 'combo' },
-                { id: 18, name: "Combo Cheddar Bacon Burguer", price: 39.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20dos%20combos%20-%20bravari%20burguer/Cheddar%20Bacon%20Burguer.jpg?raw=true", type: 'combo' },
-                { id: 19, name: "Combo Bravari Burguer", price: 37.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20dos%20combos%20-%20bravari%20burguer/Bravari%20Burguer.jpg?raw=true", type: 'combo' },
-                { id: 20, name: "Combo Cheddar Burguer Duplo", price: 45.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20dos%20combos%20-%20bravari%20burguer/Cheddar%20Burguer%20Duplo.jpg?raw=true", type: 'combo' },
-                { id: 21, name: "Combo Cheddar Bacon Burguer Duplo", price: 49.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
-                { id: 22, name: "Combo Bravari Burguer Duplo", price: 47.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
-                { id: 23, name: "Combo Bravari Bacon Triplo", price: 59.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
-                { id: 24, name: "Combo Bravari Ring Triplo", price: 62.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
-                { id: 25, name: "Combo Bravari Burguer Ring", price: 42.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
-                { id: 26, name: "Combo Vulcan Burguer", price: 44.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
-                { id: 27, name: "Combo Cream Cheese Burguer", price: 41.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
-                { id: 28, name: "Combo Bravari Salada", price: 38.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
-                { id: 29, name: "Combo Cheddar Burguer Triplo", price: 55.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' }
+                { id: 20, name: "Combo Cheddar Burguer", code: "C1", price: 35.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20dos%20combos%20-%20bravari%20burguer/Cheddar%20Burguer.jpg?raw=true", type: 'combo' },
+                { id: 21, name: "Combo Cheddar Bacon Burguer", code: "C2", price: 39.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20dos%20combos%20-%20bravari%20burguer/Cheddar%20Bacon%20Burguer.jpg?raw=true", type: 'combo' },
+                { id: 22, name: "Combo Bravari Burguer", code: "C3", price: 37.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20dos%20combos%20-%20bravari%20burguer/Bravari%20Burguer.jpg?raw=true", type: 'combo' },
+                { id: 23, name: "Combo Bravari Burguer Ring", code: "C4", price: 42.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
+                { id: 24, name: "Combo Cheddar Burguer Duplo", code: "C5", price: 45.90, description: "Mude a descrição aqui", image: "https://github.com/bravariburger/pedir/blob/main/fotos%20dos%20combos%20-%20bravari%20burguer/Cheddar%20Burguer%20Duplo.jpg?raw=true", type: 'combo' },
+                { id: 25, name: "Combo Cheddar Bacon Burguer Duplo", code: "C6", price: 49.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
+                { id: 26, name: "Combo Bravari Burguer Duplo", code: "C7", price: 47.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
+                { id: 27, name: "Combo Bravari Burguer Ring Duplo", code: "C8", price: 0.00, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
+                { id: 28, name: "Combo Cheddar Burguer Triplo", code: "C9", price: 55.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
+                { id: 29, name: "Combo Bravari Bacon Triplo", code: "C10", price: 59.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
+                { id: 30, name: "Combo Bravari Burguer Triplo", code: "C11", price: 0.00, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
+                { id: 31, name: "Combo Bravari Ring Triplo", code: "C12", price: 62.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
+                { id: 32, name: "Combo Cream Cheese Burguer", code: "C13", price: 41.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
+                { id: 33, name: "Combo Bravari Salada", code: "C14", price: 38.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
+                { id: 34, name: "Combo Vulcan Burguer", code: "C15", price: 44.90, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' },
+                { id: 35, name: "Combo Bravari Ring Triplo", code: "C16", price: 0.00, description: "Mude a descrição aqui", image: "🍽️", type: 'combo' }
             ],
             bebidas: [
-                { id: 30, name: "Coca-Cola 350ml", price: 6.90, description: "Mude a descrição aqui", image: "🥤" },
-                { id: 31, name: "Coca-Cola Zero 350ml", price: 6.90, description: "Mude a descrição aqui", image: "🥤" },
-                { id: 32, name: "Guaraná Antártica 350ml", price: 6.90, description: "Mude a descrição aqui", image: "🥤" },
-                { id: 33, name: "Guaraná Antártica 1L", price: 12.90, description: "Mude a descrição aqui", image: "🥤" }
+                { id: 36, name: "Coca-Cola 350ml", code: "CC", price: 6.90, description: "Mude a descrição aqui", image: "🥤" },
+                { id: 37, name: "Coca-Cola Zero 350ml", code: "CCZ", price: 6.90, description: "Mude a descrição aqui", image: "🥤" },
+                { id: 38, name: "Guaraná Antártica 350ml", code: "GUAA", price: 6.90, description: "Mude a descrição aqui", image: "🥤" },
+                { id: 39, name: "Guaraná Antártica 1L", code: "GUAA1L", price: 12.90, description: "Mude a descrição aqui", image: "🥤" },
+                { id: 40, name: "Coca-Cola 2L", code: "CC2L", price: 0.00, description: "Mude a descrição aqui", image: "🥤" },
+                { id: 41, name: "Coca-Cola Zero 2L", code: "CCZ2L", price: 0.00, description: "Mude a descrição aqui", image: "🥤" }
             ],
             sobremesas: [
-                { id: 34, name: "Brownie Chocolate", price: 12.90, description: "Mude a descrição aqui", image: "https://raw.githubusercontent.com/bravariburger/pedir/refs/heads/main/Sobremesas/brownie.jpg" },
-                { id: 35, name: "Brownie Chocolate Branco", price: 12.90, description: "Mude a descrição aqui", image: "https://raw.githubusercontent.com/bravariburger/pedir/refs/heads/main/Sobremesas/brownie.jpg" }
+                { id: 42, name: "Brownie Chocolate", code: "BW1", price: 12.90, description: "Mude a descrição aqui", image: "https://raw.githubusercontent.com/bravariburger/pedir/refs/heads/main/Sobremesas/brownie.jpg" },
+                { id: 43, name: "Brownie Chocolate Branco", code: "BW2", price: 12.90, description: "Mude a descrição aqui", image: "https://raw.githubusercontent.com/bravariburger/pedir/refs/heads/main/Sobremesas/brownie.jpg" }
             ]
         };
 
@@ -353,15 +406,21 @@
         // Mostrar notificação de sucesso
         function showCartNotification() {
             const notification = document.getElementById('cartNotification');
+            notification.style.display = 'block';
             notification.classList.add('show');
             setTimeout(() => {
                 notification.classList.remove('show');
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 300);
             }, 2000);
         }
 
         // Fechar popup inicial
         function closeWelcomePopup() {
             document.getElementById('welcomePopup').style.display = 'none';
+            // Liberar scroll da tela de fundo
+            document.body.style.overflow = 'auto';
         }
 
         // Scroll para categoria
@@ -413,8 +472,8 @@
                         <div class="flex justify-between items-center">
                             <span class="text-lg lg:text-xl font-bold text-red-600">R$ ${product.price.toFixed(2).replace('.', ',')}</span>
                             ${available ? 
-                                `<button onclick="event.stopPropagation(); ${product.type === 'combo' ? 'openProductPopup' : 'addToCart'}(${product.id})" class="bg-gradient-to-r from-red-600 to-yellow-500 text-white px-2 py-1 lg:px-4 lg:py-2 rounded-lg font-medium hover:shadow-lg transition-all text-xs lg:text-sm">
-                                    ${product.type === 'combo' ? 'Ver' : 'Adicionar'}
+                                `<button onclick="event.stopPropagation(); openProductPopup(${product.id})" class="bg-gradient-to-r from-red-600 to-yellow-500 text-white px-2 py-1 lg:px-4 lg:py-2 rounded-lg font-medium hover:shadow-lg transition-all text-xs lg:text-sm">
+                                    Adicionar
                                 </button>` :
                                 '<span class="text-gray-400 text-xs">Indisponível</span>'
                             }
@@ -433,14 +492,17 @@
             currentPopupProduct = product;
             selectedCrossSells = {};
             
+            // Travar scroll da tela de fundo
+            document.body.style.overflow = 'hidden';
+            
             const popup = document.getElementById('productPopup');
             const content = document.getElementById('productPopupContent');
             
             let popupHTML = `
                 <div class="relative">
-                    <button onclick="closeProductPopup()" class="absolute top-4 right-4 z-10 bg-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg text-gray-600 hover:text-gray-800">×</button>
+                    <button onclick="closeProductPopup()" class="absolute top-4 right-4 z-10 bg-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg text-gray-600 hover:text-gray-800 text-xl">×</button>
                     
-                    <div class="h-64 overflow-hidden">
+                    <div class="h-48 overflow-hidden">
                         ${product.image.startsWith('http') ? 
                             `<img src="${product.image}" alt="${product.name}" class="w-full h-full object-cover" onerror="this.src=''; this.style.display='none'; this.nextElementSibling.style.display='flex';">
                              <div class="w-full h-full bg-gray-100 flex items-center justify-center text-6xl" style="display: none;">🍔</div>` :
@@ -449,135 +511,128 @@
                     </div>
                     
                     <div class="p-6">
-                        <h2 class="text-2xl font-bold text-gray-800 mb-2">${product.name}</h2>
+                        <h2 class="text-xl font-bold text-gray-800 mb-2">${product.name}</h2>
                         <div class="text-2xl font-bold text-red-600 mb-4">R$ ${product.price.toFixed(2).replace('.', ',')}</div>
                         <p class="text-gray-600 mb-6">${product.description}</p>
             `;
             
-            // Se for combo, adicionar seleção de bebida e batata
-            if (product.type === 'combo') {
-                popupHTML += `
-                    <div class="space-y-6">
-                        <div>
-                            <h3 class="font-bold text-gray-800 mb-3">Escolha sua bebida:</h3>
-                            <div class="grid grid-cols-2 gap-2">
-                                ${products.bebidas.filter(b => isAvailable(b.id)).map(bebida => `
-                                    <div class="crossell-item p-3 rounded-lg border cursor-pointer" onclick="selectComboItem('bebida', ${bebida.id})">
-                                        <div class="text-center">
+            // Verificar se deve mostrar cross-sells (apenas para hambúrgueres e combos)
+            const shouldShowCrossSells = ['hamburgueres', 'combos'].includes(
+                Object.keys(products).find(category => 
+                    products[category].some(p => p.id === productId)
+                )
+            );
+            
+            if (shouldShowCrossSells) {
+                // Se for combo, adicionar seleção de bebida e batata
+                if (product.type === 'combo') {
+                    popupHTML += `
+                        <div class="space-y-4">
+                            <div class="crossell-section">
+                                <div class="crossell-title">
+                                    🥤 Escolha sua bebida
+                                    <span class="crossell-required">(obrigatório)</span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    ${products.bebidas.filter(b => isAvailable(b.id)).map(bebida => `
+                                        <div class="crossell-item p-3 rounded-lg cursor-pointer text-center" onclick="selectComboItem('bebida', ${bebida.id})">
                                             <div class="text-2xl mb-1">${bebida.image}</div>
-                                            <div class="text-sm font-medium">${bebida.name}</div>
+                                            <div class="text-sm font-medium text-gray-800">${bebida.name}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            
+                            <div class="crossell-section">
+                                <div class="crossell-title">
+                                    🍟 Escolha sua batata
+                                    <span class="crossell-required">(obrigatório)</span>
+                                </div>
+                                <div class="space-y-2">
+                                    <div class="crossell-item p-3 rounded-lg cursor-pointer" onclick="selectComboItem('batata', 17)">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-medium">🍟 Batata P (inclusa)</span>
+                                            <span class="text-green-600 font-bold">Grátis</span>
                                         </div>
                                     </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <h3 class="font-bold text-gray-800 mb-3">Escolha sua batata:</h3>
-                            <div class="space-y-2">
-                                <div class="crossell-item p-3 rounded-lg border cursor-pointer" onclick="selectComboItem('batata', 14)">
-                                    <div class="flex justify-between items-center">
-                                        <span>🍟 Batata P (inclusa)</span>
-                                        <span class="text-green-600 font-medium">Grátis</span>
-                                    </div>
-                                </div>
-                                <div class="crossell-item p-3 rounded-lg border cursor-pointer" onclick="selectComboItem('batata', 15)">
-                                    <div class="flex justify-between items-center">
-                                        <span>🍟 Batata M</span>
-                                        <span class="text-red-600 font-medium">+R$ 7,00</span>
-                                    </div>
-                                </div>
-                                <div class="crossell-item p-3 rounded-lg border cursor-pointer" onclick="selectComboItem('batata', 16)">
-                                    <div class="flex justify-between items-center">
-                                        <span>🍟 Batata G</span>
-                                        <span class="text-red-600 font-medium">+R$ 15,00</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <h3 class="font-bold text-gray-800 mb-3">Adicionar sobremesa? (opcional)</h3>
-                            <div class="grid grid-cols-2 gap-2">
-                                ${products.sobremesas.filter(s => isAvailable(s.id)).map(sobremesa => `
-                                    <div class="crossell-item p-3 rounded-lg border cursor-pointer" onclick="toggleCrossSell('sobremesa', ${sobremesa.id})">
-                                        <div class="text-center">
-                                            <div class="text-2xl mb-1">${sobremesa.image.startsWith('http') ? 
-                                                `<img src="${sobremesa.image}" alt="${sobremesa.name}" class="w-8 h-8 mx-auto rounded object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                                 <div style="display: none;">🍫</div>` :
-                                                sobremesa.image
-                                            }</div>
-                                            <div class="text-sm font-medium">${sobremesa.name}</div>
-                                            <div class="text-sm text-red-600">+R$ ${sobremesa.price.toFixed(2).replace('.', ',')}</div>
+                                    <div class="crossell-item p-3 rounded-lg cursor-pointer" onclick="selectComboItem('batata', 18)">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-medium">🍟 Batata M</span>
+                                            <span class="text-red-600 font-bold">+R$ 7,00</span>
                                         </div>
                                     </div>
-                                `).join('')}
+                                    <div class="crossell-item p-3 rounded-lg cursor-pointer" onclick="selectComboItem('batata', 19)">
+                                        <div class="flex justify-between items-center">
+                                            <span class="font-medium">🍟 Batata G</span>
+                                            <span class="text-red-600 font-bold">+R$ 15,00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="crossell-section">
+                                <div class="crossell-title">🍫 Adicionar sobremesa? (opcional)</div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    ${products.sobremesas.filter(s => isAvailable(s.id)).map(sobremesa => `
+                                        <div class="crossell-item p-3 rounded-lg cursor-pointer text-center" onclick="toggleCrossSell('sobremesa', ${sobremesa.id})">
+                                            <div class="text-2xl mb-1">🍫</div>
+                                            <div class="text-sm font-medium text-gray-800">${sobremesa.name}</div>
+                                            <div class="text-sm text-red-600 font-bold">+R$ ${sobremesa.price.toFixed(2).replace('.', ',')}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                `;
-            } else {
-                // Cross-sell para hambúrgueres
-                popupHTML += `
-                    <div class="space-y-6">
-                        <div>
-                            <h3 class="font-bold text-gray-800 mb-3">Adicionar bebida? (opcional)</h3>
-                            <div class="grid grid-cols-2 gap-2">
-                                ${products.bebidas.filter(b => isAvailable(b.id)).map(bebida => `
-                                    <div class="crossell-item p-3 rounded-lg border cursor-pointer" onclick="toggleCrossSell('bebida', ${bebida.id})">
-                                        <div class="text-center">
+                    `;
+                } else {
+                    // Cross-sell para hambúrgueres apenas
+                    popupHTML += `
+                        <div class="space-y-4">
+                            <div class="crossell-section">
+                                <div class="crossell-title">🥤 Adicionar bebida? (opcional)</div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    ${products.bebidas.filter(b => isAvailable(b.id)).map(bebida => `
+                                        <div class="crossell-item p-3 rounded-lg cursor-pointer text-center" onclick="toggleCrossSell('bebida', ${bebida.id})">
                                             <div class="text-2xl mb-1">${bebida.image}</div>
-                                            <div class="text-sm font-medium">${bebida.name}</div>
-                                            <div class="text-sm text-red-600">+R$ ${bebida.price.toFixed(2).replace('.', ',')}</div>
+                                            <div class="text-sm font-medium text-gray-800">${bebida.name}</div>
+                                            <div class="text-sm text-red-600 font-bold">+R$ ${bebida.price.toFixed(2).replace('.', ',')}</div>
                                         </div>
-                                    </div>
-                                `).join('')}
+                                    `).join('')}
+                                </div>
+                            </div>
+                            
+                            <div class="crossell-section">
+                                <div class="crossell-title">🍟 Adicionar batata? (opcional)</div>
+                                <div class="grid grid-cols-3 gap-2">
+                                    ${products.acompanhamentos.filter(a => isAvailable(a.id)).map(acomp => `
+                                        <div class="crossell-item p-3 rounded-lg cursor-pointer text-center" onclick="toggleCrossSell('batata', ${acomp.id})">
+                                            <div class="text-2xl mb-1">🍟</div>
+                                            <div class="text-xs font-medium text-gray-800">${acomp.name}</div>
+                                            <div class="text-xs text-red-600 font-bold">+R$ ${acomp.price.toFixed(2).replace('.', ',')}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                            
+                            <div class="crossell-section">
+                                <div class="crossell-title">🍫 Adicionar sobremesa? (opcional)</div>
+                                <div class="grid grid-cols-2 gap-3">
+                                    ${products.sobremesas.filter(s => isAvailable(s.id)).map(sobremesa => `
+                                        <div class="crossell-item p-3 rounded-lg cursor-pointer text-center" onclick="toggleCrossSell('sobremesa', ${sobremesa.id})">
+                                            <div class="text-2xl mb-1">🍫</div>
+                                            <div class="text-sm font-medium text-gray-800">${sobremesa.name}</div>
+                                            <div class="text-sm text-red-600 font-bold">+R$ ${sobremesa.price.toFixed(2).replace('.', ',')}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
                             </div>
                         </div>
-                        
-                        <div>
-                            <h3 class="font-bold text-gray-800 mb-3">Adicionar batata? (opcional)</h3>
-                            <div class="grid grid-cols-3 gap-2">
-                                ${products.acompanhamentos.filter(a => isAvailable(a.id)).map(acomp => `
-                                    <div class="crossell-item p-3 rounded-lg border cursor-pointer" onclick="toggleCrossSell('batata', ${acomp.id})">
-                                        <div class="text-center">
-                                            <div class="text-2xl mb-1">${acomp.image.startsWith('http') ? 
-                                                `<img src="${acomp.image}" alt="${acomp.name}" class="w-8 h-8 mx-auto rounded object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                                 <div style="display: none;">🍟</div>` :
-                                                acomp.image
-                                            }</div>
-                                            <div class="text-xs font-medium">${acomp.name}</div>
-                                            <div class="text-xs text-red-600">+R$ ${acomp.price.toFixed(2).replace('.', ',')}</div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <h3 class="font-bold text-gray-800 mb-3">Adicionar sobremesa? (opcional)</h3>
-                            <div class="grid grid-cols-2 gap-2">
-                                ${products.sobremesas.filter(s => isAvailable(s.id)).map(sobremesa => `
-                                    <div class="crossell-item p-3 rounded-lg border cursor-pointer" onclick="toggleCrossSell('sobremesa', ${sobremesa.id})">
-                                        <div class="text-center">
-                                            <div class="text-2xl mb-1">${sobremesa.image.startsWith('http') ? 
-                                                `<img src="${sobremesa.image}" alt="${sobremesa.name}" class="w-8 h-8 mx-auto rounded object-cover" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                                                 <div style="display: none;">🍫</div>` :
-                                                sobremesa.image
-                                            }</div>
-                                            <div class="text-sm font-medium">${sobremesa.name}</div>
-                                            <div class="text-sm text-red-600">+R$ ${sobremesa.price.toFixed(2).replace('.', ',')}</div>
-                                        </div>
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </div>
-                    </div>
-                `;
+                    `;
+                }
             }
             
             popupHTML += `
-                        <div class="mt-8">
+                        <div class="mt-6 sticky bottom-0 bg-white pt-4">
                             <button onclick="addProductWithCrossSells()" class="w-full bg-gradient-to-r from-red-600 to-yellow-500 text-white py-4 px-6 rounded-xl font-semibold hover:shadow-lg transition-all">
                                 Adicionar ao Pedido
                             </button>
@@ -595,6 +650,9 @@
             document.getElementById('productPopup').style.display = 'none';
             currentPopupProduct = null;
             selectedCrossSells = {};
+            
+            // Liberar scroll da tela de fundo
+            document.body.style.overflow = 'auto';
         }
 
         // Selecionar item do combo (obrigatório)
@@ -665,8 +723,8 @@
                         
                         // Calcular preço adicional para combos
                         if (product.type === 'combo' && type === 'batata') {
-                            if (itemId === 15) cartItem.totalPrice += 7; // Batata M
-                            if (itemId === 16) cartItem.totalPrice += 15; // Batata G
+                            if (itemId === 18) cartItem.totalPrice += 7; // Batata M
+                            if (itemId === 19) cartItem.totalPrice += 15; // Batata G
                         } else if (product.type !== 'combo') {
                             cartItem.totalPrice += crossSellProduct.price;
                         }
@@ -843,11 +901,11 @@
             message += `\n📋 *PEDIDO:*\n`;
             
             cart.forEach(item => {
-                message += `• ${item.quantity}x ${item.name}`;
+                message += `• ${item.quantity}x ${item.name} (${item.code})`;
                 
                 // Adicionar cross-sells
                 if (Object.keys(item.crossSells).length > 0) {
-                    const crossSellNames = Object.values(item.crossSells).map(cs => cs.name);
+                    const crossSellNames = Object.values(item.crossSells).map(cs => `${cs.name} (${cs.code})`);
                     message += ` (+ ${crossSellNames.join(', ')})`;
                 }
                 
@@ -898,5 +956,5 @@
             window.addEventListener('scroll', handleScroll);
         });
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'97fa1a18e4c8df51',t:'MTc1Nzk2MDA0Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9802b547300364f9',t:'MTc1ODA1MDI5MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
